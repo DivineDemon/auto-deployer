@@ -6,11 +6,9 @@
     "build": "echo 'No build step needed for this simple setup'"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "@types/node-fetch": "^2.6.9",
     "@vercel/node": "^5.5.16",
     "typescript": "^5.3.3"
   }
