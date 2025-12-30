@@ -22,6 +22,51 @@
                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Paste your content here..."></textarea>
             </div>
+
+            <!-- Env Var Section -->
+            <div class="border-t pt-4 mt-4">
+                <div class="flex items-center mb-4">
+                    <input id="modifyEnvVars" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="modifyEnvVars" class="ml-2 block text-sm text-gray-900">
+                        Modify Environment Variables?
+                    </label>
+                </div>
+
+                <div id="envVarFields" class="hidden space-y-4 pl-4 border-l-2 border-gray-200">
+                    <div>
+                        <span class="block text-sm font-medium text-gray-700 mb-2">Action</span>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="envAction" value="ADD" class="form-radio text-blue-600" checked>
+                                <span class="ml-2 text-sm">Add</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="envAction" value="UPDATE" class="form-radio text-blue-600">
+                                <span class="ml-2 text-sm">Update</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="envAction" value="DELETE" class="form-radio text-blue-600">
+                                <span class="ml-2 text-sm">Delete</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="envName" class="block text-sm font-medium text-gray-700">Variable Name</label>
+                        <input type="text" id="envName" name="envName"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="MY_VAR">
+                    </div>
+
+                    <div id="envValueContainer">
+                        <label for="envValue" class="block text-sm font-medium text-gray-700">Variable Value</label>
+                        <input type="text" id="envValue" name="envValue"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="my-value">
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <button type="submit"
                     class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
@@ -33,26 +78,82 @@
     </div>
 
     <script>
+        const modifyEnvVarsCheckbox = document.getElementById('modifyEnvVars');
+        const envVarFields = document.getElementById('envVarFields');
+        const envActionRadios = document.getElementsByName('envAction');
+        const envValueContainer = document.getElementById('envValueContainer');
+
+        modifyEnvVarsCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                envVarFields.classList.remove('hidden');
+            } else {
+                envVarFields.classList.add('hidden');
+            }
+        });
+
+        envActionRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'DELETE') {
+                    envValueContainer.classList.add('hidden');
+                } else {
+                    envValueContainer.classList.remove('hidden');
+                }
+            });
+        });
+
         document.getElementById('deployForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const submitButton = this.querySelector('button[type="submit"]');
             const statusMessage = document.getElementById('statusMessage');
             
             submitButton.disabled = true;
-            submitButton.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...';
+            submitButton.textContent = 'Processing...'; // Simplified load state
             statusMessage.classList.add('hidden');
-            statusMessage.className = 'mt-4 text-center text-sm hidden'; // Reset classes
+            statusMessage.className = 'mt-4 text-center text-sm hidden';
 
             const repoName = document.getElementById('repoName').value;
             const fileContent = document.getElementById('fileContent').value;
+            
+            const modifyEnv = modifyEnvVarsCheckbox.checked;
+            let change = { status: false };
 
+            if (modifyEnv) {
+                const action = document.querySelector('input[name="envAction"]:checked').value;
+                const name = document.getElementById('envName').value;
+                const value = document.getElementById('envValue').value;
+
+                if (!name) {
+                     alert('Variable Name is required');
+                     submitButton.disabled = false;
+                     submitButton.textContent = 'Submit';
+                     return;
+                }
+
+                change = {
+                    status: true,
+                    name: name,
+                    action: action
+                };
+
+                if (action !== 'DELETE') {
+                    change.value = value;
+                }
+            }
+
+            // Payload structure based on requirement
+            // But wait, the API expects { repoName, fileContent, change } ? 
+            // The prompt said: "this is the body we will send to the API" -> Referring to the ARRAY.
+            // However, our backend function api/submit.ts CURRENTLY handles the request from frontend.
+            // So we should send the raw data to OUR api/submit.ts, and let IT construct the final array to send to n8n.
+            // OR, standard practice, we send a JSON object to our backend, and our backend forwards it.
+            // I will update the Frontend to send { repoName, fileContent, change } object to our backend.
+            // Our backend will then wrap it in the array as requested by the user's "body we will send to the API" (API referring to n8n logic likely, or the return of this function effectively).
+            
             try {
                 const response = await fetch('/api/submit', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ repoName, fileContent }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repoName, fileContent, change }),
                 });
 
                 const result = await response.json();
@@ -60,7 +161,7 @@
                 if (response.ok) {
                     statusMessage.textContent = 'Success! ' + (result.message || 'Data submitted.');
                     statusMessage.classList.add('text-green-600');
-                    document.getElementById('deployForm').reset();
+                    // document.getElementById('deployForm').reset(); // Optional: keep form data for review?
                 } else {
                     throw new Error(result.error || 'Submission failed');
                 }
